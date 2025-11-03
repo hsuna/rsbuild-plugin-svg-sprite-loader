@@ -1,8 +1,12 @@
 {
-  "name": "rsbuild-plugin-svg-sprite-loader",
-  "version": "0.0.2",
+  "name": "@hsuna/rsbuild-plugin-svg-sprite-loader",
+  "version": "1.0.0",
   "repository": {
-    "url": "https://github.com/wenqian0812/rsbuild-plugin-svg-sprite-loader"
+    "url": "https://github.com/hsuna/rsbuild-plugin-svg-sprite-loader"
+  },
+  "author": {
+    "name": "hsuna",
+    "email": "me@hsuna.com"
   },
   "license": "MIT",
   "type": "module",
@@ -16,14 +20,15 @@
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "lint": "biome check .",
     "lint:write": "biome check . --write",
-    "prepare": "simple-git-hooks && npm run build",
-    "test": "playwright test"
+    "prepare": "simple-git-hooks && npm run build"
   },
   "simple-git-hooks": {
     "pre-commit": "npx nano-staged"
@@ -35,11 +40,9 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.8.3",
-    "@playwright/test": "^1.45.3",
     "@rsbuild/core": "^1.0.1-beta.11",
     "@types/node": "^20.14.13",
     "nano-staged": "^0.8.0",
-    "playwright": "^1.45.3",
     "simple-git-hooks": "^2.11.1",
     "tsup": "^8.2.3",
     "typescript": "^5.5.4"
@@ -52,9 +55,12 @@
       "optional": true
     }
   },
-  "packageManager": "pnpm@9.6.0",
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
+  "dependencies": {
+    "svg-baker": "^1.2.13"
+  },
+  "overrides": {
+    "braces": "^3.0.3",
+    "micromatch": "^4.0.8",
+    "postcss": ">=8.4.31"
   }
 }
