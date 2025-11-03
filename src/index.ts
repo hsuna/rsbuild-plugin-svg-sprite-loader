@@ -1,59 +1,40 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { RsbuildPlugin } from '@rsbuild/core';
+import SVGCompiler from 'svg-baker';
 
 export type SvgSpriteLoaderOptions = {
   path: string;
   // default: icon-[name]
-  symbolId?: string;
+  symbolId?: string | ((name: string) => string);
 };
 
-// 正则表达式定义
-const svgTitle = /<svg([^>]*)>/;
-const clearHeightWidth = /(width|height)="([^"]*)"/g;
-const hasViewBox = /viewBox="[^"]*"/;
-const clearReturn = /[\r\n]/g;
-
 // 查找并处理 SVG 文件
-function svgFind(directoryPath: string, idPrefix: string): string[] {
+type Compiler = InstanceType<typeof SVGCompiler>;
+
+async function svgFind(
+  compiler: Compiler,
+  directoryPath: string,
+  idPrefix: (name: string) => string,
+): Promise<string[]> {
   const svgs: string[] = [];
   const directs = readdirSync(directoryPath, { withFileTypes: true });
 
   for (const dirent of directs) {
     if (dirent.isDirectory()) {
-      svgs.push(...svgFind(join(directoryPath, dirent.name, '/'), idPrefix));
+      const nested = await svgFind(
+        compiler,
+        join(directoryPath, dirent.name),
+        idPrefix,
+      );
+      svgs.push(...nested);
     } else if (dirent.name.endsWith('.svg')) {
-      const svgContent = readFileSync(join(directoryPath, dirent.name), 'utf-8')
-        .replace(clearReturn, '')
-        .replace(svgTitle, ($1, $2: string) => {
-          let width = 0;
-          let height = 0;
-          let content = $2.replace(
-            clearHeightWidth,
-            (match: string, prop: string, value: number) => {
-              if (prop === 'width') width = value;
-              else if (prop === 'height') height = value;
-              return ''; // 移除匹配的宽度和高度属性
-            },
-          );
+      const id = idPrefix(dirent.name.replace('.svg', ''));
+      const path = join(directoryPath, dirent.name);
+      const content = readFileSync(path, 'utf-8');
 
-          // 添加 viewBox 属性，如果不存在
-          if (!hasViewBox.test(content)) {
-            content += `viewBox="0 0 ${width} ${height}"`;
-          }
-
-          const name = idPrefix.replace(
-            '[name]',
-            dirent.name.replace('.svg', ''),
-          );
-          return `<symbol id="${name}" ${content}>`;
-        })
-        .replace('</svg>', '</symbol>')
-        .replaceAll('prefix_', () => {
-          return idPrefix.replace('[name]', dirent.name.replace('.svg', ''));
-        });
-
-      svgs.push(svgContent);
+      const symbol = await compiler.addSymbol({ id, content, path });
+      svgs.push(symbol.render());
     }
   }
 
@@ -61,11 +42,22 @@ function svgFind(directoryPath: string, idPrefix: string): string[] {
 }
 
 // 创建 SVG 字符串
-function createSvg(path: string, prefix: string): string {
-  if (path === '') return '';
+async function createSvg(
+  dirPath: string,
+  symbolId?: string | ((name: string) => string),
+): Promise<string> {
+  if (!dirPath) return '';
 
-  const res = svgFind(path, prefix);
-  return res.join('');
+  const prefix =
+    typeof symbolId === 'function'
+      ? symbolId
+      : typeof symbolId === 'string'
+        ? (name: string) => symbolId.replace('[name]', name)
+        : (name: string) => `icon-${name}`;
+
+  const compiler = new SVGCompiler();
+  const symbols = await svgFind(compiler, dirPath, prefix);
+  return symbols.join('');
 }
 
 export const pluginSvgSpriteLoader = (
@@ -74,8 +66,8 @@ export const pluginSvgSpriteLoader = (
   name: 'plugin-svg-sprite-loader',
 
   setup(api) {
-    const str = createSvg(options.path, options.symbolId || 'icon-[name]');
-    api.modifyHTMLTags(({ headTags, bodyTags }) => {
+    api.modifyHTMLTags(async ({ headTags, bodyTags }) => {
+      const str = await createSvg(options.path, options.symbolId);
       bodyTags.unshift({
         tag: 'svg',
         attrs: {
