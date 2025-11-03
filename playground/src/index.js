@@ -8,6 +8,9 @@ document.querySelector('#root').innerHTML = `
     <svg class="svg-icon" aria-hidden="true" style="color: red">
       <use href="#icon-copy" />
     </svg>
+     <svg class="svg-icon" aria-hidden="true">
+      <use href="#icon-icon1" />
+    </svg>
   </p>
 </div>
 `;
